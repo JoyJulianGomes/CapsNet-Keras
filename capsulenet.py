@@ -223,11 +223,24 @@ def leak(model, data, s_dir, lw, args):
 def flowEstimation(model, data):
     x_test, y_test = data
     x_recon = model.predict(x_test)
+    print(x_recon.shape)
     f1 = np.squeeze(x_recon[0], axis=2)
+    plt.imshow(f1)
+    plt.show()
     f2 = np.squeeze(x_recon[1], axis=2)
+    plt.imshow(f2)
+    plt.show()
     f_diff = np.abs(f1 - f2) * 255
     end_point_error = np.sqrt(np.sum((np.square(f1-f2)))).mean()
     print('epe='+str(end_point_error))
+
+    file = open('./result/flowdiff-f1.txt', 'w')
+    file.write(np.array2string(f1))
+    file.close()
+
+    file = open('./result/flowdiff-f2.txt', 'w')
+    file.write(np.array2string(f2))
+    file.close()
 
     file = open('./result/flowdiff.txt', 'w')
     file.write(np.array2string(f_diff))
@@ -236,7 +249,7 @@ def flowEstimation(model, data):
     Image.fromarray(f_diff.astype(np.uint8)).save(
         args.save_dir + "/flowdiff.png")
 
-    plt.imshow(plt.imread(args.save_dir + "/flowdiff.png"))
+    plt.imshow((f_diff*255).astype(np.uint8))
     plt.show()
 
 
@@ -300,12 +313,13 @@ if __name__ == "__main__":
     (x_train, y_train), (x_test, y_test) = customTest()
 
     sampleData = (x_test[0:2, :, :, :], y_test[0:2, :])
+    print(x_test.shape)
 
     # define model
     model, eval_model, manipulate_model, primaryCap_model, digitCap_model, masked_model, decoder_model = CapsNet(input_shape=x_train.shape[1:],
                                                                                                                  n_class=10,
                                                                                                                  routings=args.routings)
-    model.summary()
+    # model.summary()
 
     # train, test or analyze
 

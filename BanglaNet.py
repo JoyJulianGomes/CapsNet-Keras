@@ -115,7 +115,7 @@ def customTest():
     test_generator = test_datagen.flow_from_directory(
         test_data_dir,
         target_size=(img_width, img_height),
-        batch_size=2,
+        batch_size=nb_test_samples,
         color_mode="grayscale",
         class_mode='categorical')
 
