@@ -10,7 +10,7 @@ pip install keras
 
 **Step 2. Clone this repository to local.**
 ```
-git clone https://github.com/XifengGuo/CapsNet-Keras.git capsnet-keras
+git clone https://github.com/JoyJulianGomes/CapsNet-Keras.git capsnet-keras
 cd capsnet-keras
 ```
 Create a new branch and make necessary commits in that branch
