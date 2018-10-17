@@ -223,17 +223,21 @@ def leak(model, data, s_dir, lw, args):
 def flowEstimation(model, data):
     x_test, y_test = data
     x_recon = model.predict(x_test)
-    fe = (x_recon[0] - x_recon[1]) * 255
-    fe = np.squeeze(fe, axis=2)
-    Image.fromarray(fe.astype(np.uint8)).save(
+    f1 = np.squeeze(x_recon[0], axis=2)
+    f2 = np.squeeze(x_recon[1], axis=2)
+    f_diff = np.abs(f1 - f2) * 255
+    end_point_error = np.sqrt(np.sum((np.square(f1-f2)))).mean()
+    print('epe='+str(end_point_error))
+
+    file = open('./result/flowdiff.txt', 'w')
+    file.write(np.array2string(f_diff))
+    file.close()
+
+    Image.fromarray(f_diff.astype(np.uint8)).save(
         args.save_dir + "/flowdiff.png")
 
     plt.imshow(plt.imread(args.save_dir + "/flowdiff.png"))
     plt.show()
-
-    file = open('./result/flowdiff.txt', 'w')
-    file.write(np.array2string(fe))
-    file.close()
 
 
 def load_mnist():
