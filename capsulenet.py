@@ -1,18 +1,18 @@
 """
 Keras implementation of CapsNet in Hinton's paper Dynamic Routing Between Capsules.
 The current version maybe only works for TensorFlow backend. Actually it will be straightforward to re-write to TF code.
-Adopting to other backends should be easy, but I have not tested this. 
+Adopting to other backends should be easy, but I have not tested this.
 
 Usage:
        python capsulenet.py
        python capsulenet.py --epochs 50
        python capsulenet.py --epochs 50 --routings 3
        ... ...
-       
+
 Result:
     Validation accuracy > 99.5% after 20 epochs. Converge to 99.66% after 50 epochs.
     About 110 seconds per epoch on a single GTX1070 GPU card
-    
+
 Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com/XifengGuo/CapsNet-Keras`
 """
 
@@ -295,17 +295,16 @@ if __name__ == "__main__":
 
     # load data
     from BanglaNet import load_BengalOCR, customTest
-    (x_train, y_train), (x_test, y_test) = load_mnist()
+    # (x_train, y_train), (x_test, y_test) = load_mnist()
     # (x_train, y_train), (x_test, y_test) = BanglaNet.load_BengalOCR()
-    # (x_test, y_test) = BanglaNet.customTest()
+    (x_train, y_train), (x_test, y_test) = customTest()
 
     sampleData = (x_test[0:2, :, :, :], y_test[0:2, :])
 
     # define model
     model, eval_model, manipulate_model, primaryCap_model, digitCap_model, masked_model, decoder_model = CapsNet(input_shape=x_train.shape[1:],
-                                                                                                                 n_class=len(
-        np.unique(np.argmax(y_train, 1))),
-        routings=args.routings)
+                                                                                                                 n_class=10,
+                                                                                                                 routings=args.routings)
     model.summary()
 
     # train, test or analyze

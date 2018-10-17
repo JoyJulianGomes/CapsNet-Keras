@@ -120,10 +120,10 @@ def customTest():
         class_mode='categorical')
 
     (x_test, y_test) = test_generator.next()
-    print(x_test)
-    print(y_test)
+    # print(x_test)
+    # print(y_test)
     # plt.imshow(x_test[0])
     # plt.show()
     # plt.imshow(x_test[1])
     # plt.show()
-    return (x_test, y_test)
+    return (x_test, y_test), (x_test, y_test)
