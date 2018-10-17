@@ -1,16 +1,8 @@
 ## Usage
 
-**Step 1.
-Install [Keras>=2.0.7](https://github.com/fchollet/keras) 
-with [TensorFlow>=1.2](https://github.com/tensorflow/tensorflow) backend.**
+**Step 1. Clone this repository to local.**
 ```
-pip install tensorflow-gpu
-pip install keras
-```
-
-**Step 2. Clone this repository to local.**
-```
-git clone https://github.com/XifengGuo/CapsNet-Keras.git capsnet-keras
+git clone https://github.com/JoyJulianGomes/CapsNet-Keras.git capsnet-keras
 cd capsnet-keras
 ```
 Create a new branch and make necessary commits in that branch
@@ -19,7 +11,7 @@ git branch a_new_branch
 ```
 Refer to git workflow.txt to see detailed instruction on git usage
 
-**Step 3. Train a CapsNet on MNIST**  
+**Step 2. Train a CapsNet on MNIST**
 
 Training with default settings:
 ```
@@ -40,12 +32,17 @@ python capsulenet.py  -w ./weight/trained_model-11-19.h5 -l dc
 python capsulenet.py  -w ./weight/trained_model-11-19.h5 -l mask
 python capsulenet.py  -w ./weight/trained_model-11-19.h5 -l all
 ```
+For Frame Difference and EPE:
+```
+python capsulenet.py  -w ./weight/trained_model-11-19.h5 -f
+```
+
 More detailed usage run for help:
 ```
 python capsulenet.py -h
 ```
 
-**Step 5. Train on multi gpus**   
+**Train on multi gpus**
 
 ```
 python capsulenet-multi-gpu.py --gpus 2
