@@ -26,6 +26,7 @@ from utils import combine_images
 from PIL import Image
 from capsulelayers import CapsuleLayer, PrimaryCap, Length, Mask
 K.set_image_data_format('channels_last')
+np.set_printoptions(threshold=np.nan)
 
 
 def CapsNet(input_shape, n_class, routings):
@@ -85,13 +86,14 @@ def CapsNet(input_shape, n_class, routings):
     primaryCap_model = models.Model(x, primarycaps)
     digitCap_model = models.Model(x, digitcaps)
     masked_model = models.Model(x, masked)
+    decoder_model = models.Model(x, decoder(masked))
 
     # manipulate model
     noise = layers.Input(shape=(n_class, 16))
     noised_digitcaps = layers.Add()([digitcaps, noise])
     masked_noised_y = Mask()([noised_digitcaps, y])
     manipulate_model = models.Model([x, y, noise], decoder(masked_noised_y))
-    return train_model, eval_model, manipulate_model, primaryCap_model, digitCap_model, masked_model
+    return train_model, eval_model, manipulate_model, primaryCap_model, digitCap_model, masked_model, decoder_model
 
 
 def margin_loss(y_true, y_pred):
@@ -211,10 +213,26 @@ def manipulate_latent(model, data, args):
     print('-' * 30 + 'End: manipulate' + '-' * 30)
 
 
-def leak(model, data, s_dir, args):
+def leak(model, data, s_dir, lw, args):
     x_test, y_test = data
     file = open(s_dir, 'w')
     file.write(np.array2string(model.predict(x_test)))
+    file.close()
+
+
+def flowEstimation(model, data):
+    x_test, y_test = data
+    x_recon = model.predict(x_test)
+    fe = (x_recon[0] - x_recon[1]) * 255
+    fe = np.squeeze(fe, axis=2)
+    Image.fromarray(fe.astype(np.uint8)).save(
+        args.save_dir + "/flowdiff.png")
+
+    plt.imshow(plt.imread(args.save_dir + "/flowdiff.png"))
+    plt.show()
+
+    file = open('./result/flowdiff.txt', 'w')
+    file.write(np.array2string(fe))
     file.close()
 
 
@@ -253,7 +271,9 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true',
                         help="Save weights by TensorBoard")
     parser.add_argument('--save_dir', default='./result')
-    parser.add_argument('-t', '--testing', action='store_true',
+    parser.add_argument('--train', action='store_true',
+                        help="train the model")
+    parser.add_argument('--testing', action='store_true',
                         help="Test the trained model on testing dataset")
     parser.add_argument('--digit', default=5, type=int,
                         help="Digit to manipulate")
@@ -261,6 +281,8 @@ if __name__ == "__main__":
                         help="The path of the saved weights. Should be specified when testing")
     parser.add_argument('-l', '--leak', default=None,
                         help="outputs activation of specified layer. available layers: pc=primarycaps, dc=digitcaps")
+    parser.add_argument('-f', '--flow', action='store_true',
+                        help="calculates flow for two consecutive frames")
     args = parser.parse_args()
     print(args)
 
@@ -273,11 +295,13 @@ if __name__ == "__main__":
     # (x_train, y_train), (x_test, y_test) = BanglaNet.load_BengalOCR()
     # (x_test, y_test) = BanglaNet.customTest()
 
+    sampleData = (x_test[0:2, :, :, :], y_test[0:2, :])
+
     # define model
-    model, eval_model, manipulate_model, primaryCap_model, digitCap_model, masked_model = CapsNet(input_shape=x_train.shape[1:],
-                                                                                                  n_class=len(
-                                                                                                      np.unique(np.argmax(y_train, 1))),
-                                                                                                  routings=args.routings)
+    model, eval_model, manipulate_model, primaryCap_model, digitCap_model, masked_model, decoder_model = CapsNet(input_shape=x_train.shape[1:],
+                                                                                                                 n_class=len(
+        np.unique(np.argmax(y_train, 1))),
+        routings=args.routings)
     model.summary()
 
     # train, test or analyze
@@ -286,30 +310,38 @@ if __name__ == "__main__":
         model.load_weights(args.weights)
         print('weight loaded')
 
-    if args.testing is not True and args.leak is None:  # Train the model
+    if args.train is True:  # Train the model
         train(model=model, data=((x_train, y_train), (x_test, y_test)), args=args)
 
-    if args.testing is True and args.leak is None:  # Test the model
+    if args.testing is True:  # Test the model
         if args.weights is None:
             print('No weights are provided. Will test using random initialized weights.')
         manipulate_latent(manipulate_model, (x_test, y_test), args)
         test(model=eval_model, data=(x_test, y_test), args=args)
 
-    x_test_out = x_test[0:2, :, :, :]
-    y_test_out = y_test[0:2, :]
-    if args.leak == 'pc':  # shows output of primaryCap layer
-        leak(model=primaryCap_model, data=(
-            x_test_out, y_test_out), s_dir='result/leakpc.txt', args=args)
-    elif args.leak == 'dc':
-        leak(model=digitCap_model, data=(
-            x_test_out, y_test_out), s_dir='result/leakdc.txt', args=args)
-    elif args.leak == 'mask':
-        leak(model=masked_model, data=(x_test_out, y_test_out),
-             s_dir='result/leakMask.txt', args=args)
-    elif args.leak == 'all':
-        leak(model=primaryCap_model, data=(
-            x_test_out, y_test_out), s_dir='result/leakpc.txt', args=args)
-        leak(model=digitCap_model, data=(
-            x_test_out, y_test_out), s_dir='result/leakdc.txt', args=args)
-        leak(model=masked_model, data=(x_test_out, y_test_out),
-             s_dir='result/leakMask.txt', args=args)
+    if args.leak is not None:
+
+        if args.leak == 'pc':  # shows output of primaryCap layer
+            leak(model=primaryCap_model, data=sampleData,
+                 s_dir='result/leakpc.txt', lw=8, args=args)
+        elif args.leak == 'dc':
+            leak(model=digitCap_model, data=sampleData,
+                 s_dir='result/leakdc.txt', lw=16, args=args)
+        elif args.leak == 'mask':
+            leak(model=masked_model, data=sampleData,
+                 s_dir='result/leakMask.txt', lw=160, args=args)
+        elif args.leak == 'decoder':
+            leak(model=eval_model, data=sampleData,
+                 s_dir='result/leakDecoder.txt', lw=28, args=args)
+        elif args.leak == 'all':
+            leak(model=primaryCap_model, data=sampleData,
+                 s_dir='result/leakpc.txt', lw=8, args=args)
+            leak(model=digitCap_model, data=sampleData,
+                 s_dir='result/leakdc.txt', lw=16, args=args)
+            leak(model=masked_model, data=sampleData,
+                 s_dir='result/leakMask.txt', lw=160, args=args)
+            leak(model=decoder_model, data=sampleData,
+                 s_dir='result/leakDecoder.txt', lw=28, args=args)
+
+    if args.flow is not None:
+        flowEstimation(model=decoder_model, data=sampleData)
