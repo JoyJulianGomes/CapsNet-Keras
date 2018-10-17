@@ -1,0 +1,6 @@
+datasets/*
+.vscode
+.idea
+__pycache__
+*.sh
+result/*

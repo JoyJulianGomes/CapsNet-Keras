@@ -1,0 +1,204 @@
+Master branch holds only the official release.
+Create another branch "develop" locally for integration
+purpose and push to server. 
+
+    [1] git branch develop
+    [2] git push -u origin develop
+
+
+Each feature is developed in its own brances, which is
+child branch of branch "develop".
+
+    switching to develop branch
+    [3] git checkout develop
+
+    creating and switching to feature branch
+    [4] git checkout -b feature_branch
+
+After feature development branch is merged back to
+"develop" branch.
+
+    [5] git checkout develop
+    [6] git merge feature_branch
+
+Newly added fetures in the develop branch are copied
+in release branch for further inspection and
+documentation. Development in develop branch
+continues.
+
+    [7] git checkout develop
+    [8] git checkout -b release/0.1.0
+
+Modifictions in release branch is merged to master
+and develop branch
+
+    [9] git checkout develop
+    [10] git merge release/0.1.0
+
+Check for untracked files:
+git status
+
+Add all untracked files in the branch to workflow
+git add .
+for specific file:
+git add filename
+
+Commit the files in the branch
+git commit
+
+publish the modification
+git push -u origin branch_name
+__________________________________________________________________
+
+Git Repo test
+
+created develop branch locally
+
+    [1] git checkout -b develop
+
+pushed develop branch to origin
+
+    [2] git push origin develop
+    [output: develop branch available in remote]
+
+created feature_1 branch from develop
+
+    [3] git checkout develop
+    [4] git checkout -b feature_1
+
+added files for feature 1 in feature_1 branch
+files: feature1.txt < feature_1_codes
+[file is not commited so available to all branches]
+
+stage files in feature_1 branch to commit
+
+    [5] git add feature1.txt
+
+commit files in feature_1 branch
+
+    [6] git commit
+
+create another branch feature_2 from git develop branch
+
+    [7] git checkout develop
+    [8] git checkout -b feature_2
+
+create files for feature 2 in feature_2 branch
+
+added files for feature 2 in feature_2 branch
+files: feature2.txt < feature_2_codes
+[file is not commited so available to all branches]
+
+tracking and committing files in feature_2 branch
+
+    [9] git add feature2.txt
+    [10] git commit
+
+Editing files in feature_1 branch
+files: feature1.txt << feature_1_codes_addition_1
+
+checking effects on feature_2 branch
+
+    [11] git checkout feature_2
+    [output : checkout blocked; either stash or commit before checkout or file will be overwritten]
+
+Stashing the files
+
+    [12] git stash
+
+switching to feature_2 branch
+
+    [13] git checkout feature_2
+
+checking files in the directory
+
+    [14] ls
+    [output : modified file in feature_1 branch is not available]
+
+switching back to feature_1 and observe file state
+
+    [15] git checkout feature_1
+
+modification in the file is not available
+
+listing stashed files
+
+    [16] git stash list
+
+unstashing most recent stashed files
+    [17] git stash apply
+    --for specific stashed point -> [17] git stash apply stash@{__stash_point__}
+
+modifications in the file available again
+
+commiting files locally
+
+    [18] git commit
+
+Sending feature_1 branch to remote
+
+    [19] git push origin feature_1
+
+Observe stash effects on untracked files:
+created new file feature1file2.txt
+
+    [20] git stash
+    [output : file not affected. Must be tracked before stashed]
+
+tracked new file
+
+    [21] git add feature1file2.txt
+    [output : still available to all branches]
+
+Observe modification effects from different branch
+
+    [22] git checkout feature_2
+
+Make file changes
+
+    [23] git checkout feature_1
+    [output : changes from feature_2 branch is available in the feature_1 branch]
+
+Stash the file
+
+    [24] git stash
+
+check availability in feature_2 branch
+
+    [25] git checkout feature_2
+    [output : file not available in feature_2 branch]
+
+committing the new file
+
+    [26] git commit
+
+committing and pushing feature_2 branch to origin
+
+    [27] git checkout feature_2
+    [28] git commit
+    [29] git push origin feature_2
+
+Merging featrue_1 branch with develop
+
+    [30] git fetch
+    [output : no new items added]
+    [31] git checkout develop
+    [32] git merge featrue_1
+
+Pushing develop branch on origin to broadcast update
+
+    [33] git push origin develop
+
+Merging feature_2 branch to develop branch: codes of feature_2 branch will be available to develop branch
+
+    [34] git checkout develop
+    [35] git merge feature_2
+
+------------------------------------------------------------------------------------------------------------------------
+Updating local develop with remote develop
+>>git checkout develop
+>>git pull origin develop
+Bringing changes in remote to a local branch to solve conflicts
+>>git checkout feature_1
+>>git merge develop //updates in develop is now available to feature_1 
+//git checkout develop; git merge feature_1 //updates in feature_1 is now available in develop
