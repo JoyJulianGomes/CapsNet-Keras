@@ -1,21 +1,3 @@
-"""
-Keras implementation of CapsNet in Hinton's paper Dynamic Routing Between Capsules.
-The current version maybe only works for TensorFlow backend. Actually it will be straightforward to re-write to TF code.
-Adopting to other backends should be easy, but I have not tested this. 
-
-Usage:
-       python capsulenet.py
-       python capsulenet.py --epochs 50
-       python capsulenet.py --epochs 50 --routings 3
-       ... ...
-       
-Result:
-    Validation accuracy > 99.5% after 20 epochs. Converge to 99.66% after 50 epochs.
-    About 110 seconds per epoch on a single GTX1070 GPU card
-    
-Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com/XifengGuo/CapsNet-Keras`
-"""
-
 import numpy as np
 from keras import layers, models, optimizers
 from keras import backend as K
@@ -223,11 +205,24 @@ def leak(model, data, s_dir, lw, args):
 def flowEstimation(model, data):
     x_test, y_test = data
     x_recon = model.predict(x_test)
+    print(x_recon.shape)
     f1 = np.squeeze(x_recon[0], axis=2)
+    plt.imshow(f1)
+    plt.show()
     f2 = np.squeeze(x_recon[1], axis=2)
+    plt.imshow(f2)
+    plt.show()
     f_diff = np.abs(f1 - f2) * 255
     end_point_error = np.sqrt(np.sum((np.square(f1-f2)))).mean()
     print('epe='+str(end_point_error))
+
+    file = open('./result/flowdiff-f1.txt', 'w')
+    file.write(np.array2string(f1))
+    file.close()
+
+    file = open('./result/flowdiff-f2.txt', 'w')
+    file.write(np.array2string(f2))
+    file.close()
 
     file = open('./result/flowdiff.txt', 'w')
     file.write(np.array2string(f_diff))
@@ -236,20 +231,8 @@ def flowEstimation(model, data):
     Image.fromarray(f_diff.astype(np.uint8)).save(
         args.save_dir + "/flowdiff.png")
 
-    plt.imshow(plt.imread(args.save_dir + "/flowdiff.png"))
+    plt.imshow((f_diff*255).astype(np.uint8))
     plt.show()
-
-
-def load_mnist():
-    # the data, shuffled and split between train and test sets
-    from keras.datasets import mnist
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-
-    x_train = x_train.reshape(-1, 28, 28, 1).astype('float32') / 255.
-    x_test = x_test.reshape(-1, 28, 28, 1).astype('float32') / 255.
-    y_train = to_categorical(y_train.astype('float32'))
-    y_test = to_categorical(y_test.astype('float32'))
-    return (x_train, y_train), (x_test, y_test)
 
 
 if __name__ == "__main__":
@@ -293,19 +276,16 @@ if __name__ == "__main__":
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
-    # load data
-    from BanglaNet import load_BengalOCR, customTest
-    (x_train, y_train), (x_test, y_test) = load_mnist()
-    # (x_train, y_train), (x_test, y_test) = BanglaNet.load_BengalOCR()
-    # (x_test, y_test) = BanglaNet.customTest()
-
-    sampleData = (x_test[0:2, :, :, :], y_test[0:2, :])
+    # Load Data
+    from BanglaNet import load_Agressive
+    (x_train, y_train), (x_validation,
+                         y_validation), (x_test, y_test) = load_Agressive()
 
     # define model
     model, eval_model, manipulate_model, primaryCap_model, digitCap_model, masked_model, decoder_model = CapsNet(input_shape=x_train.shape[1:],
                                                                                                                  n_class=len(
-        np.unique(np.argmax(y_train, 1))),
-        routings=args.routings)
+                                                                                                                     np.unique(np.argmax(y_train, 1))),
+                                                                                                                 routings=args.routings)
     model.summary()
 
     # train, test or analyze
@@ -315,13 +295,13 @@ if __name__ == "__main__":
         print('weight loaded')
 
     if args.train is True:  # Train the model
-        train(model=model, data=((x_train, y_train), (x_test, y_test)), args=args)
+        train(model=model, data=((x_train, y_train),
+                                 (x_validation, y_validation)), args=args)
 
     if args.testing is True:  # Test the model
         if args.weights is None:
             print('No weights are provided. Will test using random initialized weights.')
-        manipulate_latent(manipulate_model, (x_test, y_test), args)
-        test(model=eval_model, data=(x_test, y_test), args=args)
+        test(model=eval_model, data=(x_train, y_train), args=args)
 
     if args.leak is not None:
 
@@ -347,5 +327,5 @@ if __name__ == "__main__":
             leak(model=decoder_model, data=sampleData,
                  s_dir='result/leakDecoder.txt', lw=28, args=args)
 
-    if args.flow is not None:
+    if args.flow is True:
         flowEstimation(model=decoder_model, data=sampleData)

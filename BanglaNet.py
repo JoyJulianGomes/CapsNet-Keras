@@ -60,44 +60,88 @@ def load_BengaliHandwrittenDigit():
 
 
 def load_BengalOCR():
+    target_shape = (28, 28)
+
+    train_sample = 1740*10
+    validation_sample = 145*10
+    test_sample = 97*10
+
     train_datagen = ImageDataGenerator(rescale=1./255,
-                                       validation_split=0.3,
+                                       shear_range=0.2,
+                                       zoom_range=0.2,
                                        data_format='channels_last')
-
     train_generator = train_datagen.flow_from_directory(
-        directory='E:/Work/Thesis/CapsNet-Keras/datasets/Bangla OCR Dataset/numerical',
-        target_size=(28, 28),
-        batch_size=32,
+        directory='E:/Work/Thesis/CapsNet-Keras/datasets/Bangla OCR Dataset/numerical/train',
+        target_size=target_shape,
+        batch_size=train_sample,
         color_mode='grayscale',
-        class_mode='categorical',
-        subset='training'
+        class_mode='categorical'
     )
-
-    validation_generator = validation_datagen.flow_from_directory(
-        directory='E:/Work/Thesis/CapsNet-Keras/datasets/Bangla OCR Dataset/numerical',
-        target_size=(28, 28),
-        color_mode="grayscale",
-        class_mode='categorical',
-        subset='validation')
-
-    test_generator = test_datagen.flow_from_directory(
-        test_data_dir,
-        target_size=(img_width, img_height),
-        batch_size=nb_test_samples,
-        color_mode="grayscale",
-        class_mode='categorical')
-
-    model.fit_generator(
-        train_generator,
-        steps_per_epoch=2000,
-        validation_data=validation_generator,
-        validation_steps=2000,
-        epochs=10
-    )
-
     (x_train, y_train) = train_generator.next()
+
+    validation_datagen = ImageDataGenerator(rescale=1./255)
+    validation_generator = validation_datagen.flow_from_directory(
+        directory='E:/Work/Thesis/CapsNet-Keras/datasets/Bangla OCR Dataset/numerical/validation',
+        target_size=target_shape,
+        batch_size=validation_sample,
+        color_mode="grayscale",
+        class_mode='categorical'
+    )
     (x_validation, y_validation) = validation_generator.next()
+
+    test_datagen = ImageDataGenerator(rescale=1./255)
+    test_generator = test_datagen.flow_from_directory(
+        directory='E:/Work/Thesis/CapsNet-Keras/datasets/Bangla OCR Dataset/numerical/test',
+        target_size=target_shape,
+        batch_size=test_sample,
+        color_mode="grayscale",
+        class_mode='categorical'
+    )
     (x_test, y_test) = test_generator.next()
+
+    return (x_train, y_train), (x_validation, y_validation), (x_test, y_test)
+
+
+def load_Agressive():
+    target_shape = (28, 28)
+
+    train_sample = 7152+4768
+    validation_sample = 3540+2360
+    test_sample = 1200+800
+
+    train_datagen = ImageDataGenerator(rescale=1./255,
+                                       shear_range=0.2,
+                                       zoom_range=0.2,
+                                       data_format='channels_last')
+    train_generator = train_datagen.flow_from_directory(
+        directory='E:/Work/Thesis/Agressive-Binary/dataset/Agressive/train',
+        target_size=target_shape,
+        batch_size=train_sample,
+        color_mode='grayscale',
+        class_mode='categorical'
+    )
+    (x_train, y_train) = train_generator.next()
+
+    validation_datagen = ImageDataGenerator(rescale=1./255)
+    validation_generator = validation_datagen.flow_from_directory(
+        directory='E:/Work/Thesis/Agressive-Binary/dataset/Agressive/validation',
+        target_size=target_shape,
+        batch_size=validation_sample,
+        color_mode="grayscale",
+        class_mode='categorical'
+    )
+    (x_validation, y_validation) = validation_generator.next()
+
+    test_datagen = ImageDataGenerator(rescale=1./255)
+    test_generator = test_datagen.flow_from_directory(
+        directory='E:/Work/Thesis/Agressive-Binary/dataset/Agressive/test',
+        target_size=target_shape,
+        batch_size=test_sample,
+        color_mode="grayscale",
+        class_mode='categorical'
+    )
+    (x_test, y_test) = test_generator.next()
+
     return (x_train, y_train), (x_validation, y_validation), (x_test, y_test)
 
 
@@ -115,15 +159,15 @@ def customTest():
     test_generator = test_datagen.flow_from_directory(
         test_data_dir,
         target_size=(img_width, img_height),
-        batch_size=2,
+        batch_size=nb_test_samples,
         color_mode="grayscale",
         class_mode='categorical')
 
     (x_test, y_test) = test_generator.next()
-    print(x_test)
-    print(y_test)
+    # print(x_test)
+    # print(y_test)
     # plt.imshow(x_test[0])
     # plt.show()
     # plt.imshow(x_test[1])
     # plt.show()
-    return (x_test, y_test)
+    return (x_test, y_test), (x_test, y_test)
