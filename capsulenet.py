@@ -53,29 +53,13 @@ def CapsNet(input_shape, n_class, routings):
     # If using tensorflow, this will not be necessary. :)
     out_caps = Length(name='capsnet')(digitcaps)
 
-    # Decoder network.
-    y = layers.Input(shape=(n_class,))
-    # The true label is used to mask the output of capsule layer. For training
-    masked_by_y = Mask()([digitcaps, y])
-    # Mask using the capsule with maximal length. For prediction
-    masked = Mask()(digitcaps)
-
-    # Shared Decoder model in training and prediction
-    decoder = models.Sequential(name='decoder')
-    decoder.add(layers.Dense(512, activation='relu', input_dim=16*n_class))
-    decoder.add(layers.Dense(1024, activation='relu'))
-    decoder.add(layers.Dense(np.prod(input_shape), activation='sigmoid'))
-    decoder.add(layers.Reshape(target_shape=input_shape, name='out_recon'))
-
     # Models for training, evaluation (prediction) amd analyzing
-    train_model = models.Model([x, y], [out_caps, decoder(masked_by_y)])
-    eval_model = models.Model(x, [out_caps, decoder(masked)])
+    train_model = models.Model(x, out_caps)
+    eval_model = models.Model(x, out_caps)
     primaryCap_model = models.Model(x, primarycaps)
     digitCap_model = models.Model(x, digitcaps)
-    masked_model = models.Model(x, masked)
-    decoder_model = models.Model(x, decoder(masked))
 
-    return train_model, eval_model, primaryCap_model, digitCap_model, masked_model, decoder_model
+    return train_model, eval_model, primaryCap_model, digitCap_model
 
 
 def margin_loss(y_true, y_pred):
@@ -111,9 +95,8 @@ def train(model, args):
 
     # compile the model
     model.compile(optimizer=optimizers.Adam(lr=args.lr),
-                  loss=[margin_loss, 'mse'],
-                  loss_weights=[1., args.lam_recon],
-                  metrics={'capsnet': 'accuracy'})
+                  loss=margin_loss,
+                  metrics=['accuracy'])
 
     # Begin: Training with data augmentation ---------------------------------------------------------------------#
     def train_gen(args):
@@ -131,7 +114,7 @@ def train(model, args):
             class_mode='categorical')
         while 1:
             x_batch, y_batch = train_generator.next()
-            yield [[x_batch, y_batch], [y_batch, x_batch]]
+            yield [x_batch, y_batch]
 
     def val_gen(args):
         validation_datagen = ImageDataGenerator(
@@ -144,7 +127,7 @@ def train(model, args):
             class_mode='categorical')
         while 1:
             x_batch, y_batch = validation_generator.next()
-            yield [[x_batch, y_batch], [y_batch, x_batch]]
+            yield [x_batch, y_batch]
 
     # Training with data augmentation. If shift_fraction=0., also no augmentation.
     model.fit_generator(generator=train_gen(args),
@@ -174,7 +157,7 @@ def test(model, args):
         color_mode="grayscale",
         class_mode='categorical'
     )
-    y_pred, x_recon = model.predict_generator(generator=test_generator)
+    y_pred = model.predict_generator(generator=test_generator)
     print('-'*30 + 'Begin: test' + '-'*30)
     print('Test acc:', np.sum(np.argmax(y_pred, 1)
                               == np.argmax(y_test, 1))/y_test.shape[0])
@@ -283,9 +266,9 @@ if __name__ == "__main__":
     # load data
 
     # define model
-    model, eval_model, primaryCap_model, digitCap_model, masked_model, decoder_model = CapsNet(input_shape=(120, 160, 1),
-                                                                                               n_class=9,
-                                                                                               routings=args.routings)
+    model, eval_model, primaryCap_model, digitCap_model = CapsNet(input_shape=(120, 160, 1),
+                                                                  n_class=9,
+                                                                  routings=args.routings)
 
     model.summary()
 
@@ -326,6 +309,3 @@ if __name__ == "__main__":
                  s_dir='result/leakMask.txt', lw=160, args=args)
             leak(model=decoder_model, data=sampleData,
                  s_dir='result/leakDecoder.txt', lw=28, args=args)
-
-    if args.flow is not None:
-        flowEstimation(model=decoder_model, data=sampleData)
