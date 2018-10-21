@@ -5,3 +5,4 @@ __pycache__
 *.sh
 result/*
 todo.txt
+todo.md

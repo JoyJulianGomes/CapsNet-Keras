@@ -69,8 +69,7 @@ def load_BengalOCR():
         target_size=(28, 28),
         batch_size=32,
         color_mode='grayscale',
-        class_mode='categorical',
-        subset='training'
+        class_mode='categorical'
     )
 
     validation_generator = validation_datagen.flow_from_directory(
@@ -98,6 +97,49 @@ def load_BengalOCR():
     (x_train, y_train) = train_generator.next()
     (x_validation, y_validation) = validation_generator.next()
     (x_test, y_test) = test_generator.next()
+    return (x_train, y_train), (x_validation, y_validation), (x_test, y_test)
+
+
+def load_Florence():
+    target_shape = (240, 320)
+
+    train_sample = 2948
+    validation_sample = 773
+    test_sample = 295
+
+    train_datagen = ImageDataGenerator(rescale=1./255,
+                                       shear_range=0.2,
+                                       zoom_range=0.2,
+                                       data_format='channels_last')
+    train_generator = train_datagen.flow_from_directory(
+        directory='E:\\Work\\Thesis\\Datasets\\florence3d_actions\\Florence_3d_actions\\images\\train',
+        target_size=target_shape,
+        batch_size=train_sample,
+        color_mode='grayscale',
+        class_mode='categorical'
+    )
+    (x_train, y_train) = train_generator.next()
+
+    validation_datagen = ImageDataGenerator(rescale=1./255)
+    validation_generator = validation_datagen.flow_from_directory(
+        directory='E:\\Work\\Thesis\\Datasets\\florence3d_actions\\Florence_3d_actions\\images\\validation',
+        target_size=target_shape,
+        batch_size=validation_sample,
+        color_mode="grayscale",
+        class_mode='categorical'
+    )
+    (x_validation, y_validation) = validation_generator.next()
+
+    test_datagen = ImageDataGenerator(rescale=1./255)
+    test_generator = test_datagen.flow_from_directory(
+        directory='E:\\Work\\Thesis\\Datasets\\florence3d_actions\\Florence_3d_actions\\images\\test',
+        target_size=target_shape,
+        batch_size=test_sample,
+        color_mode="grayscale",
+        class_mode='categorical'
+    )
+    (x_test, y_test) = test_generator.next()
+
     return (x_train, y_train), (x_validation, y_validation), (x_test, y_test)
 
 
