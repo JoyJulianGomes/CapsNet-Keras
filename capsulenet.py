@@ -11,6 +11,7 @@ from PIL import Image
 
 from capsulelayers import CapsuleLayer, Length, Mask, PrimaryCap
 from utils import combine_images
+from DatasetConfig import KTH as Dataset
 
 K.set_image_data_format('channels_last')
 np.set_printoptions(threshold=np.nan)
@@ -75,7 +76,7 @@ def margin_loss(y_true, y_pred):
     return K.mean(K.sum(L, 1))
 
 
-def train(model, args):
+def train(model, target_shape, args):
     """
     Training a CapsuleNet
     :param model: the CapsuleNet model
@@ -107,8 +108,8 @@ def train(model, args):
                                            zoom_range=0.2,
                                            data_format='channels_last')
         train_generator = train_datagen.flow_from_directory(
-            directory='E:\\Work\\Thesis\\Datasets\\florence3d_actions\\Florence_3d_actions\\images\\train',
-            target_size=(120, 160),
+            directory=Dataset['train_path'],
+            target_size=target_shape,
             batch_size=args.batch_size,
             color_mode='grayscale',
             class_mode='categorical')
@@ -120,8 +121,8 @@ def train(model, args):
         validation_datagen = ImageDataGenerator(
             rescale=1./255, data_format='channels_last')
         validation_generator = validation_datagen.flow_from_directory(
-            directory='E:\\Work\\Thesis\\Datasets\\florence3d_actions\\Florence_3d_actions\\images\\validation',
-            target_size=(120, 160),
+            directory=Dataset['validation_path'],
+            target_size=target_shape,
             batch_size=args.batch_size,
             color_mode='grayscale',
             class_mode='categorical')
@@ -131,10 +132,12 @@ def train(model, args):
 
     # Training with data augmentation. If shift_fraction=0., also no augmentation.
     model.fit_generator(generator=train_gen(args),
-                        steps_per_epoch=int(2948 / args.batch_size),
+                        steps_per_epoch=int(
+                            Dataset['nb_train_sample'] / args.batch_size),
                         epochs=args.epochs,
                         validation_data=val_gen(args),
-                        validation_steps=int(773/args.batch_size),
+                        validation_steps=int(
+                            Dataset['nb_validation_sample']/args.batch_size),
                         callbacks=[log, tb, checkpoint, lr_decay])
     # End: Training with data augmentation -----------------------------------------------------------------------#
 
@@ -147,11 +150,11 @@ def train(model, args):
     return model
 
 
-def test(model, args):
+def test(model, target_shape, args):
     test_datagen = ImageDataGenerator(rescale=1./255)
     test_generator = test_datagen.flow_from_directory(
-        directory='E:\\Work\\Thesis\\Datasets\\florence3d_actions\\Florence_3d_actions\\images\\test',
-        target_size=(120, 160),
+        directory=Dataset['nb_test_path'],
+        target_size=target_shape,
         shuffle=False,
         batch_size=args.batch_size,
         color_mode="grayscale",
@@ -173,33 +176,6 @@ def test(model, args):
     plt.show()
 
 
-def manipulate_latent(model, data, args):
-    print('-'*30 + 'Begin: manipulate' + '-'*30)
-    x_test, y_test = data
-    index = np.argmax(y_test, 1) == args.digit
-    number = np.random.randint(low=0, high=sum(index) - 1)
-    x, y = x_test[index][number], y_test[index][number]
-    x, y = np.expand_dims(x, 0), np.expand_dims(y, 0)
-    noise = np.zeros([1, 10, 16])
-    x_recons = []
-    for dim in range(16):
-        for r in [-0.25, -0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, 0.2, 0.25]:
-            tmp = np.copy(noise)
-            tmp[:, :, dim] = r
-            x_recon = model.predict([x, y, tmp])
-            x_recons.append(x_recon)
-
-    x_recons = np.concatenate(x_recons)
-
-    img = combine_images(x_recons, height=16)
-    image = img*255
-    Image.fromarray(image.astype(np.uint8)).save(
-        args.save_dir + '/manipulate-%d.png' % args.digit)
-    print('manipulated result saved to %s/manipulate-%d.png' %
-          (args.save_dir, args.digit))
-    print('-' * 30 + 'End: manipulate' + '-' * 30)
-
-
 def leak(model, data, s_dir, lw, args):
     x_test, y_test = data
     file = open(s_dir, 'w')
@@ -207,37 +183,16 @@ def leak(model, data, s_dir, lw, args):
     file.close()
 
 
-def flowEstimation(model, data):
-    x_test, y_test = data
-    x_recon = model.predict(x_test)
-    f1 = np.squeeze(x_recon[0], axis=2)
-    f2 = np.squeeze(x_recon[1], axis=2)
-    f_diff = np.abs(f1 - f2) * 255
-    end_point_error = np.sqrt(np.sum((np.square(f1-f2)))).mean()
-    print('epe='+str(end_point_error))
-
-    file = open('./result/flowdiff.txt', 'w')
-    file.write(np.array2string(f_diff))
-    file.close()
-
-    Image.fromarray(f_diff.astype(np.uint8)).save(
-        args.save_dir + "/flowdiff.png")
-
-    plt.imshow(plt.imread(args.save_dir + "/flowdiff.png"))
-    plt.show()
-
-
 if __name__ == "__main__":
     # setting the hyper parameters
-    parser = argparse.ArgumentParser(description="Capsule Network on MNIST.")
+    parser = argparse.ArgumentParser(
+        description="Capsule Network on Action Recognition Datasets.")
     parser.add_argument('--epochs', default=50, type=int)
     parser.add_argument('--batch_size', default=100, type=int)
     parser.add_argument('--lr', default=0.001, type=float,
                         help="Initial learning rate")
     parser.add_argument('--lr_decay', default=0.9, type=float,
                         help="The value multiplied by lr at each epoch. Set a larger value for larger epochs")
-    parser.add_argument('--lam_recon', default=0.392, type=float,
-                        help="The coefficient for the loss of decoder")
     parser.add_argument('-r', '--routings', default=3, type=int,
                         help="Number of iterations used in routing algorithm. should > 0")
     parser.add_argument('--shift_fraction', default=0.1, type=float,
@@ -249,25 +204,22 @@ if __name__ == "__main__":
                         help="train the model")
     parser.add_argument('--testing', action='store_true',
                         help="Test the trained model on testing dataset")
-    parser.add_argument('--digit', default=5, type=int,
-                        help="Digit to manipulate")
     parser.add_argument('-w', '--weights', default=None,
                         help="The path of the saved weights. Should be specified when testing")
     parser.add_argument('-l', '--leak', default=None,
-                        help="outputs activation of specified layer. available layers: pc=primarycaps, dc=digitcaps")
-    parser.add_argument('-f', '--flow', action='store_true',
-                        help="calculates flow for two consecutive frames")
+                        help="outputs activation of intermediate layer. available layers: pc=primarycaps, dc=digitcaps")
+    parser.add_argument('--target_shape', nargs='+',
+                        default=Dataset['target_shape'], type=int)
     args = parser.parse_args()
     print(args)
 
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
-    # load data
-
     # define model
-    model, eval_model, primaryCap_model, digitCap_model = CapsNet(input_shape=(120, 160, 1),
-                                                                  n_class=9,
+    target_shape = (args.target_shape[0], args.target_shape[1])
+    model, eval_model, primaryCap_model, digitCap_model = CapsNet(input_shape=(target_shape[0], target_shape[1], Dataset['shape'][2]),
+                                                                  n_class=Dataset['nb_classes'],
                                                                   routings=args.routings)
 
     model.summary()
@@ -279,12 +231,12 @@ if __name__ == "__main__":
         print('weight loaded')
 
     if args.train is True:  # Train the model
-        train(model=model, args=args)
+        train(model=model, target_shape=target_shape, args=args)
 
     if args.testing is True:  # Test the model
         if args.weights is None:
             print('No weights are provided. Will test using random initialized weights.')
-        test(model=eval_model, args=args)
+        test(model=eval_model, target_shape=target_shape,  args=args)
 
     if args.leak is not None:
 
